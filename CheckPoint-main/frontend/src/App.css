@@ -1,0 +1,284 @@
+/* Additional app-specific styles */
+.hero-section {
+  position: relative;
+  overflow: hidden;
+  min-height: 90vh;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.4), transparent);
+  z-index: 1;
+}
+
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgba(112, 0, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(112, 0, 255, 0.05) 1px, transparent 1px);
+  background-size: 30px 30px;
+  opacity: 0.3;
+  z-index: 2;
+}
+
+.hero-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(112, 0, 255, 0.15), transparent 70%);
+  z-index: 1;
+}
+
+.nav-link {
+  position: relative;
+}
+
+.nav-link::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: var(--primary);
+  transition: width 0.3s ease;
+}
+
+.nav-link:hover::after {
+  width: 100%;
+}
+
+.featured-game-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background-color: var(--card);
+}
+
+.featured-game-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.7), transparent);
+  z-index: 1;
+}
+
+.featured-game-content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 2rem;
+  z-index: 2;
+}
+
+.game-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background-color: var(--card);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.game-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(112, 0, 255, 0.2);
+}
+
+.game-card-image {
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+}
+
+.game-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.game-card:hover .game-card-image img {
+  transform: scale(1.05);
+}
+
+.game-card-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.4), transparent);
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+}
+
+.game-card:hover .game-card-overlay {
+  opacity: 0.9;
+}
+
+.game-card-content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem;
+}
+
+.game-card-title {
+  font-weight: 600;
+  color: white;
+  transition: color 0.3s ease;
+}
+
+.game-card:hover .game-card-title {
+  color: var(--primary);
+}
+
+.rating {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: #fbbf24;
+}
+
+.tab-button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.tab-button.active {
+  background-color: var(--primary);
+  color: white;
+}
+
+.tab-button:not(.active) {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.tab-button:not(.active):hover {
+  color: white;
+}
+
+.input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background-color: #0a0a0a;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: white;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.form-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--card);
+  padding: 1.5rem;
+}
+
+body.dark {
+  background: #111;
+  color: #fff;
+}
+body.light {
+  background: #fff;
+  color: #111;
+}
+
+/* .featured-game{
+  color:#fff;
+} */
+
+/* Optional: override specific elements if needed */
+.bg-black {
+  background: #111 !important;
+}
+.bg-white {
+  background: #fff !important;
+}
+.text-white {
+  color: #fff !important;
+}
+.text-black {
+  color: #111 !important;
+}
+body.light .header, body.light .container.header-container, body.light .nav, body.light .actions {
+  background: #fff !important;
+  color: #111 !important;
+}
+body.light .nav-link {
+  color: #111 !important;
+}
+body.light .btn,
+body.light .btn-outline {
+  color: #111 !important;
+  border-color: #7000FF !important;
+  background: #fff !important;
+}
+body.light .btn-primary {
+  background: #7000FF !important;
+  color: #fff !important;
+}
+body.light .input {
+  background: #fff !important;
+  color: #111 !important;
+  border: 1px solid #ccc !important;
+}
+body.light .logo-dot {
+  background: #7000FF !important;
+}
+body.light .profile-icon {
+  color: #111 !important;
+}
+body.light .text-white {
+  color: #111 !important;
+}
+body.light .bg-black {
+  background: #fff !important;
+}
+body.light .text-black {
+  color: #111 !important;
+}
+body.light .bg-light-gray {
+  background: #f3f3f3 !important;
+}
+body.light .border-light-gray {
+  border-color: #ccc !important;
+}
+body.light .hover-text-purple:hover {
+  color: #7000FF !important;
+}
+.dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.dialog-content {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 600px;
+    position: relative;
+}
+
+.close-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+}

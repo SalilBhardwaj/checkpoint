@@ -1,0 +1,1100 @@
+"use client";
+
+import { useState, useEffect, useContext } from "react";
+import { useNavigate } from "react-router-dom";
+import { MainNav } from "../components/MainNav";
+import dayjs from "dayjs";
+import { GameCard } from "../components/GameCard";
+import { ThemeContext } from "../ThemeContext";
+import ListCard from "../components/ListCard";
+import ReviewCard from "../components/reviewCard";
+import FavoritesSection from "../components/FavouritesSection";
+import {
+  User,
+  Settings,
+  Camera,
+  Edit3,
+  Calendar,
+  Heart,
+  Star,
+  List,
+  GamepadIcon,
+  X,
+  Save,
+  Upload,
+  MapPin,
+  UserPlus,
+  UserMinus,
+  BookHeart,
+  Search,
+  MoreHorizontal,
+  Globe,
+} from "lucide-react";
+
+export default function Profile() {
+  const navigate = useNavigate();
+  const baseUrl = import.meta.env.VITE_BASE_URL;
+  const [activeTab, setActiveTab] = useState("overview");
+  const [games, setGames] = useState([]);
+  const [lists, setLists] = useState([]);
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [favouritesGames, setFavouritesGames] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [followersModalOpen, setFollowersModalOpen] = useState(false);
+  const [followingModalOpen, setFollowingModalOpen] = useState(false);
+  const [followers, setFollowers] = useState([]);
+  const [following, setFollowing] = useState([]);
+  const [wishlist, setWishlist] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [editError, setEditError] = useState("");
+  const [editFormData, setEditFormData] = useState({
+    name: user?.name || "",
+    userName: user?.userName || "",
+    description: profile?.description || "",
+    email: user?.email || "",
+    profileImage: user?.profileImage || null, // <-- add this
+  });
+  const currentUser = JSON.parse(localStorage.getItem("user"))?._id;
+
+  const [favouriteGenre, setFavouriteGenre] = useState([]);
+  useEffect(() => {
+    const fetchFavGenre = async () => {
+      const response = await fetch(`${baseUrl}/favGenres/${user?._id}`, {
+        credentials: "include",
+      });
+      console.log(response.status);
+
+      if (response.status == 200) {
+        const data = await response.json();
+        console.log(data);
+        setFavouriteGenre(data.favGenres);
+      } else {
+        setFavouriteGenre([]);
+      }
+    };
+    if (user != null || user != undefined) fetchFavGenre();
+  }, [user, baseUrl]);
+
+  useEffect(() => {
+    if (user && profile) {
+      setEditFormData({
+        name: user.name || "",
+        userName: user.userName || "",
+        description: profile.description || "",
+        email: user.email || "",
+        profileImage: user.profileImage || null,
+      });
+    }
+  }, [user, profile]);
+
+  const { theme } = useContext(ThemeContext);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchedGames, setSearchedGames] = useState([]);
+
+  const handleGameSearch = async () => {
+    if (!searchQuery.trim()) {
+      setSearchedGames([]);
+      return;
+    }
+    try {
+      const response = await fetch(
+        `${baseUrl}/search?q=${encodeURIComponent(searchQuery)}`
+      );
+      const data = await response.json();
+      console.log(data);
+      setSearchedGames(data.games || []);
+    } catch (error) {
+      console.error("Error searching games:", error);
+      setSearchedGames([]);
+    }
+  };
+  const [showGameSelector, setShowGameSelector] = useState(false);
+
+  const handleSelectGame = async (game) => {
+    const response = await fetch(`${baseUrl}/wishlist/add/`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ gameId: game._id }),
+    });
+    const data = await response.json();
+    console.log("wishlist", data);
+    setWishlist(data.wishlist);
+    setShowGameSelector(false);
+    setSearchQuery("");
+    setSearchedGames([]);
+  };
+
+  // Mock followers/following data - replace with actual API calls
+  useEffect(() => {
+    if (reviews) {
+      const newGames = reviews.map((review) => review.review.game);
+      setGames([...newGames]);
+    }
+  }, [reviews]);
+
+  const handleCreateList = () => {
+    navigate("/lists", { state: { showInputs: true } });
+  };
+  useEffect(() => {
+    setLoading(true);
+    async function fetchData() {
+      const response = await fetch(`${baseUrl}/profile`, {
+        method: "GET",
+        credentials: "include",
+      });
+      if (response.status === 401) {
+        window.location.href = "/sign-in";
+        return;
+      }
+      const data = await response.json();
+      console.log(data);
+      return data;
+    }
+    fetchData().then((result) => {
+      setProfile(result.profile);
+      setUser(result.profile.user);
+      setWishlist(result.profile.wishlist);
+      setReviews(result.profile.reviews);
+      setFavouritesGames(result.profile.favourites);
+      setLists(result.profile.lists);
+    });
+    setLoading(false);
+  }, [baseUrl]);
+
+  const handleEditProfile = () => {
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveProfile = async () => {
+    const formData = new FormData();
+    formData.append("name", editFormData.name);
+    formData.append("userName", editFormData.userName);
+    formData.append("description", editFormData.description);
+    // formData.append("email", editFormData.email);
+    if (editFormData.profileImage instanceof File) {
+      formData.append("profileImage", editFormData.profileImage);
+    }
+
+    const response = await fetch(`${baseUrl}/profile/`, {
+      method: "PATCH",
+      credentials: "include",
+      body: formData,
+    });
+    const data = await response.json();
+    console.log(data);
+    if (response.ok) {
+      setProfile(data.profile);
+      setUser(data.profile.user);
+    } else {
+      setEditError(data.message);
+    }
+    setIsEditModalOpen(false);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // const handleFollowToggle = (userId, isCurrentlyFollowing) => {
+  //   // Add your follow/unfollow API call here
+  //   console.log(`${isCurrentlyFollowing ? "Unfollowing" : "Following"} user:`, userId)
+
+  //   // Update local state
+  //   setFollowers((prev) =>
+  //     prev.map((user) => (user.id === userId ? { ...user, isFollowing: !isCurrentlyFollowing } : user)),
+  //   )
+  //   setFollowing((prev) =>
+  //     prev.map((user) => (user.id === userId ? { ...user, isFollowing: !isCurrentlyFollowing } : user)),
+  //   )
+  // }
+
+  const stats = {
+    gamesPlayed: games.length || 0,
+    reviews: reviews?.length || 0,
+    lists: profile?.lists?.length || 8,
+    followers: profile?.followers?.length || 0,
+    following: profile?.followings?.length || 0,
+    favourites: profile?.favourites?.length || 4,
+    wishlist: wishlist?.length || 0,
+  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <span className="text-gray-500 text-lg">Loading profile...</span>
+      </div>
+    );
+  }
+
+  if (profile) {
+    return (
+      <div
+        className={`min-h-screen ${theme === "dark" ? "bg-black text-white" : "bg-gray-50 text-black"
+          }`}
+      >
+        <MainNav />
+
+        <div className="container mx-auto px-4 py-8 max-w-6xl">
+          {/* Profile Header */}
+          <div
+            className={`rounded-2xl p-8 mb-8 ${theme === "dark"
+              ? "bg-gray-900/50 border border-gray-800"
+              : "bg-white border border-gray-200"
+              } backdrop-blur-sm`}
+          >
+            <div className="flex flex-col lg:flex-row gap-8">
+              {/* Profile Image & Basic Info */}
+              <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
+                <div className="relative group">
+                  <div className="w-32 h-32 rounded-2xl overflow-hidden border-4 border-purple-500/20 shadow-xl">
+                    <img
+                      src={
+                        editFormData.profileImage ||
+                        "https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg?semt=ais_hybrid&w=740"
+                      }
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </div>
+
+                <div className="text-center sm:text-left">
+                  <h1 className="text-3xl font-bold mb-2">
+                    {user?.name || "User Name"}
+                  </h1>
+                  <p
+                    className={`text-lg mb-3 ${theme === "dark" ? "text-gray-400" : "text-gray-600"
+                      }`}
+                  >
+                    @{user?.userName || "username"}
+                  </p>
+
+                  {/* Description */}
+                  <p
+                    className={`text-sm mb-4 max-w-md ${theme === "dark" ? "text-gray-300" : "text-gray-700"
+                      }`}
+                  >
+                    {profile?.description ||
+                      "Gaming enthusiast and reviewer. Love exploring new worlds and sharing experiences with fellow gamers. Always up for a good co-op session!"}
+                  </p>
+
+                  {/* User Details */}
+                  <div className="flex flex-wrap gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-gray-500" />
+                      <span className="text-gray-500">
+                        Joined {user && dayjs(user.createdAt).format("MMM YYYY")}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stats & Actions */}
+              <div className="flex-1 lg:ml-auto">
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-6 mb-6">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-purple-500">
+                      {stats.gamesPlayed}
+                    </div>
+                    <div className="text-sm text-gray-500">Games</div>
+                  </div>
+                  <div
+                    className="text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg p-2 transition-colors"
+                    onClick={() => setFollowersModalOpen(true)}
+                  >
+                    <div className="text-2xl font-bold text-blue-500">
+                      {stats.followers}
+                    </div>
+                    <div className="text-sm text-gray-500">Followers</div>
+                  </div>
+                  <div
+                    className="text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg p-2 transition-colors"
+                    onClick={() => setFollowingModalOpen(true)}
+                  >
+                    <div className="text-2xl font-bold text-green-500">
+                      {stats.following}
+                    </div>
+                    <div className="text-sm text-gray-500">Following</div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                {user?._id == currentUser && (
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleEditProfile}
+                      className={`flex-1 px-6 py-3 rounded-xl font-medium transition-all ${theme === "dark"
+                        ? "bg-purple-600 hover:bg-purple-700 text-white"
+                        : "bg-purple-500 hover:bg-purple-600 text-white"
+                        }`}
+                    >
+                      <Edit3 className="w-4 h-4 inline mr-2" />
+                      Edit Profile
+                    </button>
+                    <button
+                      className={`px-4 py-3 rounded-xl transition-all ${theme === "dark"
+                        ? "bg-gray-800 hover:bg-gray-700 text-white"
+                        : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                        }`}
+                    >
+                      <Settings className="w-4 h-4" />
+                    </button>
+                    <button
+                      className={`px-4 py-3 rounded-xl transition-all ${theme === "dark"
+                        ? "bg-gray-800 hover:bg-gray-700 text-white"
+                        : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                        }`}
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col xl:flex-row gap-8">
+            {/* Sidebar */}
+            <div className="w-full xl:w-80 space-y-6">
+              {/* Quick Stats */}
+              <div
+                className={`rounded-2xl p-6 ${theme === "dark"
+                  ? "bg-gray-900/50 border border-gray-800"
+                  : "bg-white border border-gray-200"
+                  }`}
+              >
+                <h3 className="font-bold mb-4 text-lg">Gaming Stats</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-purple-500/20 rounded-lg">
+                        <Star className="w-4 h-4 text-purple-500" />
+                      </div>
+                      <span className="text-sm">Reviews</span>
+                    </div>
+                    <span className="font-semibold">{stats.reviews}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-500/20 rounded-lg">
+                        <List className="w-4 h-4 text-blue-500" />
+                      </div>
+                      <span className="text-sm">Lists</span>
+                    </div>
+                    <span className="font-semibold">{stats.lists}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-red-500/20 rounded-lg">
+                        <Heart className="w-4 h-4 text-red-500" />
+                      </div>
+                      <span className="text-sm">Wishlist</span>
+                    </div>
+                    <span className="font-semibold">{stats.wishlist}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Favorite Genres */}
+              <div
+                className={`rounded-2xl p-6 ${theme === "dark"
+                  ? "bg-gray-900/50 border border-gray-800"
+                  : "bg-white border border-gray-200"
+                  }`}
+              >
+                <h3 className="font-bold mb-4 text-lg">Favorite Genres</h3>
+                <div className="flex flex-wrap gap-2">
+                  {favouriteGenre.length > 0 &&
+                    favouriteGenre?.map((genre) => (
+                      <span
+                        key={genre}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium ${theme === "dark"
+                          ? "bg-gray-800 text-gray-300 border border-gray-700"
+                          : "bg-gray-100 text-gray-700 border border-gray-200"
+                          }`}
+                      >
+                        {genre}
+                      </span>
+                    ))}
+                  {(favouriteGenre.length == 0 ||
+                    favouriteGenre == undefined) && <span>No Games Played.</span>}
+                </div>
+              </div>
+
+              {/* Recent Activity */}
+              <div
+                className={`rounded-2xl p-6 ${theme === "dark"
+                  ? "bg-gray-900/50 border border-gray-800"
+                  : "bg-white border border-gray-200"
+                  }`}
+              >
+                <h3 className="font-bold mb-4 text-lg">Recent Activity</h3>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <div className="text-sm">
+                      <p className="font-medium">Added to favorites</p>
+                      <p className="text-gray-500 text-xs">2 hours ago</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <div className="text-sm">
+                      <p className="font-medium">Wrote a review</p>
+                      <p className="text-gray-500 text-xs">1 day ago</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <div className="text-sm">
+                      <p className="font-medium">Created a new list</p>
+                      <p className="text-gray-500 text-xs">3 days ago</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Main Content */}
+            <div className="flex-1">
+              {/* Navigation Tabs */}
+              <div className="mb-8">
+                <div
+                  className={`p-1.5 rounded-2xl flex flex-wrap gap-1 ${theme === "dark"
+                    ? "bg-gray-900/50 border border-gray-800"
+                    : "bg-white border border-gray-200"
+                    }`}
+                >
+                  {[
+                    { id: "overview", label: "Overview", icon: User },
+                    { id: "games", label: "Games", icon: GamepadIcon },
+                    { id: "reviews", label: "Reviews", icon: Star },
+                    { id: "lists", label: "Lists", icon: List },
+                    { id: "wishlist", label: "Wishlist", icon: BookHeart },
+                    { id: "favourite", label: "Favourites", icon: Heart },
+                  ].map(({ id, label, icon: Icon }) => (
+                    <button
+                      key={id}
+                      onClick={() => setActiveTab(id)}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === id
+                        ? "bg-purple-500 text-white shadow-lg"
+                        : theme === "dark"
+                          ? "text-gray-400 hover:text-white hover:bg-gray-800"
+                          : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                        }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tab Content */}
+              <div
+                className={`rounded-2xl p-6 ${theme === "dark"
+                  ? "bg-gray-900/50 border border-gray-800"
+                  : "bg-white border border-gray-200"
+                  }`}
+              >
+                {activeTab === "overview" && (
+                  <div className="space-y-8">
+                    <div>
+                      <h2 className="text-2xl font-bold mb-6">Overview</h2>
+
+                      {/* Recent Games */}
+                      <div className="mb-8">
+                        <h3 className="text-lg font-semibold mb-4">
+                          Recently Played
+                        </h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                          {games?.slice(0, 6).map((game) => (
+                            <GameCard key={game?.id} game={game} />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Recent Reviews */}
+                      <div>
+                        <h3 className="text-lg font-semibold mb-4">
+                          Latest Reviews
+                        </h3>
+                        <div className="space-y-4">
+                          {reviews.slice(0, 5).map((review, i) => (
+                            <div
+                              key={i}
+                              className={`p-4 rounded-xl ${theme === "dark" ? "bg-gray-800/50" : "bg-gray-50"
+                                }`}
+                            >
+                              <ReviewCard review={review.review} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === "games" && (
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                      <h2 className="text-2xl font-bold">Games Collection</h2>
+                      <button className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl flex items-center gap-2">
+                        <GamepadIcon className="w-4 h-4" />
+                        Add Game
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                      {games.length === 0 && (
+                        <div className="col-span-full text-center text-gray-500 py-12">
+                          No games found.
+                        </div>
+                      )}
+                      {games.map((game) => (
+                        <GameCard key={game.id} game={game} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === "lists" && (
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                      <h2 className="text-2xl font-bold">My Lists</h2>
+                      <button
+                        onClick={handleCreateList}
+                        className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl flex items-center gap-2"
+                      >
+                        <List className="w-4 h-4" />
+                        Create List
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                      {lists?.length === 0 && (
+                        <div className="col-span-full text-center text-gray-500 py-12">
+                          No lists found.
+                        </div>
+                      )}
+                      {lists?.map((items) => (
+                        <ListCard key={items.list._id} {...items.list} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === "favourite" && (
+                  <div className="space-y-6">
+                    <h2 className="text-2xl font-bold">Favourite Games</h2>
+                    {Array.isArray(favouritesGames) ? (
+                      <FavoritesSection
+                        initialFavorites={favouritesGames}
+                        onUpdateFavorites={setFavouritesGames}
+                        availableGames={games}
+                      />
+                    ) : (
+                      <div className="text-center py-12">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto"></div>
+                        <p className="text-gray-500 mt-4">
+                          Loading favourites...
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === "reviews" && (
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                      <h2 className="text-2xl font-bold">My Reviews</h2>
+                      <button className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl flex items-center gap-2">
+                        <Edit3 className="w-4 h-4" />
+                        Write Review
+                      </button>
+                    </div>
+
+                    <div className="space-y-6">
+                      {reviews.map((review, i) => (
+                        <div
+                          key={i}
+                          className={`p-4 rounded-xl ${theme === "dark" ? "bg-gray-800/50" : "bg-gray-50"
+                            }`}
+                        >
+                          <ReviewCard review={review.review} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === "wishlist" && (
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                      <h2 className="text-2xl font-bold">Gaming Wishlist</h2>
+                      <button
+                        onClick={() => setShowGameSelector((p) => !p)}
+                        className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl flex items-center gap-2"
+                      >
+                        <BookHeart className="w-4 h-4" />
+                        Add Games
+                      </button>
+                      {showGameSelector && (
+                        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+                          <div
+                            className={`rounded-lg p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto ${theme === "dark"
+                              ? "bg-[#151515] border border-[#252525]"
+                              : "bg-white border border-gray-200"
+                              }`}
+                          >
+                            <div className="flex justify-between items-center mb-6">
+                              <h3 className="text-xl font-bold">Select a Game</h3>
+                              <button
+                                onClick={() => setShowGameSelector(false)}
+                                className={`p-2 rounded-lg transition-colors ${theme === "dark"
+                                  ? "text-gray-400 hover:text-white hover:bg-[#252525]"
+                                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                                  }`}
+                              >
+                                <X className="w-6 h-6" />
+                              </button>
+                            </div>
+
+                            <div className="mb-6">
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  placeholder="Search games..."
+                                  value={searchQuery}
+                                  onChange={(e) => setSearchQuery(e.target.value)}
+                                  className="input w-full pr-10"
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") handleGameSearch();
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleGameSearch}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                                  tabIndex={-1}
+                                >
+                                  <Search className="w-5 h-5" />
+                                </button>
+                              </div>
+                            </div>
+
+                            {searchQuery && searchedGames.length === 0 && (
+                              <div className="text-center py-8">
+                                <p className="text-gray-500">No games found.</p>
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                              {searchedGames.map((game) => (
+                                <button
+                                  key={game._id}
+                                  onClick={() => handleSelectGame(game)}
+                                  className={`aspect-[3/4] rounded-lg overflow-hidden border-2 transition-all duration-200 hover:transform hover:scale-105 ${theme === "dark"
+                                    ? "border-[#252525] hover:border-[#7000FF]"
+                                    : "border-gray-200 hover:border-[#7000FF]"
+                                    } relative`} // <-- add relative here
+                                >
+                                  <img
+                                    src={
+                                      game.coverImage ||
+                                      "/placeholder.svg?height=400&width=300"
+                                    }
+                                    alt={game.title}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      e.target.src =
+                                        "/placeholder.svg?height=400&width=300";
+                                    }}
+                                  />
+                                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                                    <p className="text-xs text-white font-medium truncate">
+                                      {game.title}
+                                    </p>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                      {wishlist.length === 0 && (
+                        <div className="col-span-full text-center text-gray-500 py-12">
+                          No games found.
+                        </div>
+                      )}
+                      {wishlist.map((wish) => (
+                        <GameCard key={wish.game.id} game={wish.game} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Edit Profile Modal */}
+        {isEditModalOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div
+              className={`w-full max-w-2xl rounded-2xl p-6 ${theme === "dark"
+                ? "bg-gray-900 border border-gray-800"
+                : "bg-white border border-gray-200"
+                }`}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold">Edit Profile</h2>
+                <button
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center gap-6">
+                  <div className="relative">
+                    <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-gray-300">
+                      <img
+                        src={
+                          editFormData.profileImage instanceof File
+                            ? URL.createObjectURL(editFormData.profileImage)
+                            : editFormData.profileImage ||
+                            "https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg?semt=ais_hybrid&w=740"
+                        }
+                        alt="Profile"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <label className="absolute -bottom-1 -right-1 bg-purple-500 text-white p-1.5 rounded-full hover:bg-purple-600 cursor-pointer">
+                      <Upload className="w-3 h-3" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            setEditFormData((prev) => ({
+                              ...prev,
+                              profileImage: e.target.files[0],
+                            }));
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Profile Photo</h3>
+                    <p className="text-sm text-gray-500">
+                      Upload a new profile picture
+                    </p>
+                    <button
+                      className="text-purple-500 text-sm hover:text-purple-600 mt-1"
+                      type="button"
+                      onClick={() => {
+                        // Trigger file input click
+                        document
+                          .querySelector('input[type="file"][accept^="image"]')
+                          .click();
+                      }}
+                    >
+                      Change Photo
+                    </button>
+                    {editFormData.profileImage && (
+                      <button
+                        className="ml-2 text-xs text-red-500 hover:underline"
+                        type="button"
+                        onClick={() =>
+                          setEditFormData((prev) => ({
+                            ...prev,
+                            profileImage: null,
+                          }))
+                        }
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Form Fields */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={editFormData.name}
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-3 rounded-xl border ${theme === "dark"
+                        ? "bg-gray-800 border-gray-700 text-white"
+                        : "bg-white border-gray-300"
+                        }`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Username
+                    </label>
+                    <input
+                      type="text"
+                      name="userName"
+                      value={editFormData.userName}
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-3 rounded-xl border ${theme === "dark"
+                        ? "bg-gray-800 border-gray-700 text-white"
+                        : "bg-white border-gray-300"
+                        }`}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-2">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={editFormData.email}
+                      disabled
+                      className={`w-full px-4 py-3 rounded-xl border ${theme === "dark"
+                        ? "bg-gray-800 border-gray-700 text-white"
+                        : "bg-white border-gray-300"
+                        }`}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-2">
+                      Description
+                    </label>
+                    <textarea
+                      name="description"
+                      value={editFormData.description}
+                      onChange={handleInputChange}
+                      rows={3}
+                      maxlength="400"
+                      className={`w-full px-4 py-3 rounded-xl border ${theme === "dark"
+                        ? "bg-gray-800 border-gray-700 text-white"
+                        : "bg-white border-gray-300"
+                        }`}
+                      placeholder="Tell us about yourself and your gaming interests...(Not more than 400 characters)"
+                    />
+                  </div>
+                  {/* <div>
+                  <label className="block text-sm font-medium mb-2">Location</label>
+                  <input
+                    type="text"
+                    name="location"
+                    value={editFormData.location}
+                    onChange={handleInputChange}
+                    className={`w-full px-4 py-3 rounded-xl border ${theme === "dark" ? "bg-gray-800 border-gray-700 text-white" : "bg-white border-gray-300"}`}
+                    placeholder="City, Country"
+                  />
+                </div> */}
+                  {/* <div>
+                  <label className="block text-sm font-medium mb-2">Website</label>
+                  <input
+                    type="url"
+                    name="website"
+                    value={editFormData.website}
+                    onChange={handleInputChange}
+                    className={`w-full px-4 py-3 rounded-xl border ${theme === "dark" ? "bg-gray-800 border-gray-700 text-white" : "bg-white border-gray-300"}`}
+                    placeholder="https://yourwebsite.com"
+                  />
+                </div> */}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={handleSaveProfile}
+                    className="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-3 px-4 rounded-xl flex items-center justify-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save Changes
+                  </button>
+                  <button
+                    onClick={() => setIsEditModalOpen(false)}
+                    className={`px-6 py-3 rounded-xl border ${theme === "dark"
+                      ? "border-gray-700 hover:bg-gray-800"
+                      : "border-gray-300 hover:bg-gray-50"
+                      }`}
+                  >
+                    Cancel
+                  </button>
+                </div>
+                {editError && <div className="text-red-500">{editError}</div>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Followers Modal */}
+        {followersModalOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div
+              className={`w-full max-w-md rounded-2xl p-6 ${theme === "dark"
+                ? "bg-gray-900 border border-gray-800"
+                : "bg-white border border-gray-200"
+                }`}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold">Followers</h2>
+                <button
+                  onClick={() => setFollowersModalOpen(false)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search followers..."
+                    className={`w-full pl-10 pr-4 py-3 rounded-xl border ${theme === "dark"
+                      ? "bg-gray-800 border-gray-700 text-white"
+                      : "bg-gray-50 border-gray-300"
+                      }`}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {followers.map((user) => (
+                  <div
+                    key={user.id}
+                    className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full overflow-hidden">
+                        <img
+                          src={user.avatar || "/placeholder.svg"}
+                          alt={user.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div>
+                        <p className="font-medium">{user.name}</p>
+                        <p className="text-sm text-gray-500">@{user.userName}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() =>
+                        handleFollowToggle(user.id, user.isFollowing)
+                      }
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${user.isFollowing
+                        ? "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-red-100 dark:hover:bg-red-900/20"
+                        : "bg-purple-500 text-white hover:bg-purple-600"
+                        }`}
+                    >
+                      {user.isFollowing ? (
+                        <>
+                          <UserMinus className="w-4 h-4 inline mr-1" />
+                          Unfollow
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus className="w-4 h-4 inline mr-1" />
+                          Follow
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Following Modal */}
+        {followingModalOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div
+              className={`w-full max-w-md rounded-2xl p-6 ${theme === "dark"
+                ? "bg-gray-900 border border-gray-800"
+                : "bg-white border border-gray-200"
+                }`}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold">Following</h2>
+                <button
+                  onClick={() => setFollowingModalOpen(false)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search following..."
+                    className={`w-full pl-10 pr-4 py-3 rounded-xl border ${theme === "dark"
+                      ? "bg-gray-800 border-gray-700 text-white"
+                      : "bg-gray-50 border-gray-300"
+                      }`}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {following.map((user) => (
+                  <div
+                    key={user.id}
+                    className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full overflow-hidden">
+                        <img
+                          src={user.avatar || "/placeholder.svg"}
+                          alt={user.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div>
+                        <p className="font-medium">{user.name}</p>
+                        <p className="text-sm text-gray-500">@{user.userName}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleFollowToggle(user.id, true)}
+                      className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
+                    >
+                      <UserMinus className="w-4 h-4 inline mr-1" />
+                      Unfollow
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+}
